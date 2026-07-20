@@ -1,0 +1,7 @@
+node_modules/
+data/
+
+# Sample files provided for reference contain real customer/personal data —
+# keep them local only, do not publish to the (public) remote.
+Certificate_Example.pdf
+S__65691665.jpg

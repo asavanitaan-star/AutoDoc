@@ -1,0 +1,212 @@
+:root {
+  --navy: #0f2f6b;
+  --blue: #1f7fc4;
+  --bg: #eef1f6;
+  --card: #ffffff;
+  --line: #d7deea;
+  --ink: #1b2330;
+  --muted: #6b7688;
+  --pass: #1a8a4a;
+  --fail: #c62828;
+  --shadow: 0 1px 3px rgba(20,40,80,.08), 0 6px 20px rgba(20,40,80,.06);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: "Segoe UI", "Noto Sans Thai", Tahoma, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+}
+
+/* ---- top bar ---- */
+.topbar {
+  display: flex; align-items: center; gap: 28px;
+  background: var(--navy); color: #fff;
+  padding: 0 22px; height: 56px;
+  position: sticky; top: 0; z-index: 20;
+}
+.brand { font-weight: 700; font-size: 18px; cursor: pointer; letter-spacing: .3px; }
+.brand span { color: #7fc0ec; }
+.topbar nav { display: flex; gap: 6px; }
+.topbar nav a {
+  color: #cdd8ec; text-decoration: none; padding: 8px 14px; border-radius: 8px; font-weight: 600;
+}
+.topbar nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
+.topbar nav a.active { background: #fff; color: var(--navy); }
+
+main { max-width: 1080px; margin: 0 auto; padding: 22px 18px 60px; }
+
+/* ---- generic ---- */
+.page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.page-head h1 { font-size: 22px; margin: 0; color: var(--navy); }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 18px 20px; margin-bottom: 18px; box-shadow: var(--shadow);
+}
+.card h2 { margin: 0 0 14px; font-size: 16px; color: var(--navy); }
+.card h2 small { color: var(--muted); font-weight: 500; }
+.muted { color: var(--muted); }
+.error { color: var(--fail); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  border: 1px solid var(--line); background: #fff; color: var(--ink);
+  padding: 9px 16px; border-radius: 8px; font-weight: 600; font-size: 14px;
+  text-decoration: none; transition: .12s;
+}
+.btn:hover { border-color: var(--blue); }
+.btn.primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+.btn.primary:hover { background: #143a86; }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--fail); border-color: #f0c4c4; }
+.btn.danger:hover { background: #fdecec; }
+.btn.sm { padding: 5px 10px; font-size: 12.5px; }
+
+/* ---- tables ---- */
+table.grid { width: 100%; border-collapse: collapse; }
+table.grid th, table.grid td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+table.grid th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+.row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.eqtable input { width: 100%; }
+
+/* ---- forms ---- */
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+.fgrid .col2 { grid-column: 1 / -1; }
+label { display: flex; flex-direction: column; gap: 5px; font-weight: 600; font-size: 13px; color: #3a465c; }
+input, textarea, select {
+  font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink);
+}
+input:focus, textarea:focus, select:focus { outline: 2px solid #bcd8f0; border-color: var(--blue); }
+textarea { resize: vertical; }
+
+.cert-no-tag { color: var(--muted); font-size: 14px; }
+.cert-no-tag b { color: var(--navy); }
+
+.perf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+.perf-field .pf-label { font-size: 13px; }
+.perf-field .pf-label small { color: var(--muted); font-weight: 500; }
+.pf-input { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+.pf-input input { width: 130px; }
+
+/* zone tables in form */
+.ztable-form { overflow-x: auto; }
+.zform-head, .zform-row { display: grid; grid-template-columns: 170px repeat(6, 1fr) 74px 60px; gap: 6px; align-items: center; }
+.ztable-form:has(.ov) .zform-head, .ztable-form:has(.ov) .zform-row { grid-template-columns: 170px repeat(6, 1fr) 74px 60px; }
+.zform-head { color: var(--muted); font-size: 12px; padding-bottom: 6px; }
+.zform-head span { text-align: center; }
+.zform-head span:first-child { text-align: left; }
+.zform-row { margin-bottom: 6px; }
+.zform-lbl { font-weight: 600; font-size: 13px; }
+.zform-lbl small { color: var(--blue); font-weight: 600; display: block; }
+.zform-row input { width: 100%; text-align: center; padding: 7px 4px; }
+.zform-row input.fail { border-color: var(--fail); background: #fdecec; color: var(--fail); }
+
+.zbadge { font-size: 11px; font-weight: 700; text-align: center; padding: 3px 6px; border-radius: 6px; color: var(--muted); background: #eef1f6; }
+.zbadge.pass { color: #fff; background: var(--pass); }
+.zbadge.fail { color: #fff; background: var(--fail); }
+
+.form-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.form-actions .spacer, .cert-toolbar .spacer { flex: 1; }
+.overall-badge { font-weight: 800; padding: 8px 14px; border-radius: 8px; background: #eef1f6; color: var(--muted); }
+.overall-badge.pass { background: #e5f5ec; color: var(--pass); }
+.overall-badge.fail { background: #fdecec; color: var(--fail); }
+
+.sig-preview-wrap { display: flex; align-items: center; gap: 14px; }
+.sig-preview { min-width: 180px; height: 70px; border: 1px dashed var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.sig-preview img { max-height: 60px; max-width: 220px; }
+
+/* toast */
+.toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 11px 20px; border-radius: 10px; box-shadow: var(--shadow); z-index: 50; font-weight: 600; }
+.toast.err { background: var(--fail); }
+
+/* =========================================================================
+   CERTIFICATE  (print-accurate A4)
+   ========================================================================= */
+.cert-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.cert-viewport { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.cert-doc { display: flex; flex-direction: column; gap: 20px; }
+
+.cert-page {
+  width: 210mm; min-height: 297mm; background: #fff; color: #111;
+  padding: 14mm 15mm; box-shadow: var(--shadow);
+  font-family: "Times New Roman", Georgia, serif; font-size: 11.2pt; line-height: 1.35;
+}
+
+.cert-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.cert-header-left .co-name { color: var(--navy); font-weight: 800; font-size: 13pt; font-family: Arial, sans-serif; }
+.cert-header-left .co-addr { color: var(--blue); font-style: italic; font-size: 7.4pt; font-family: Arial, sans-serif; line-height: 1.3; margin-top: 2px; }
+
+.cert-title { text-align: center; font-weight: 400; font-size: 21pt; letter-spacing: .5px; margin: 20px 0 6px; }
+.cert-subtitle { text-align: center; font-size: 13pt; margin-bottom: 18px; }
+.ref-title { text-align: center; font-weight: 400; font-size: 22pt; margin: 4px 0 4px; }
+.ref-subtitle { text-align: center; font-size: 12.5pt; margin-bottom: 20px; }
+
+.cert-fields { display: flex; flex-direction: column; gap: 7px; margin-bottom: 4px; }
+.cert-fields > div { display: flex; align-items: baseline; }
+.cert-fields .lbl { min-width: 120px; }
+.cert-fields .val { }
+.cert-fields .val.tab { margin-left: 34px; }
+
+.sec { font-weight: 700; text-decoration: underline; font-size: 11.5pt; margin: 14px 0 8px; }
+
+.perf-row { display: grid; grid-template-columns: 190px 210px 60px 1fr; align-items: baseline; margin-bottom: 8px; }
+.perf-lbl { }
+.perf-val { border-bottom: 1px solid #000; text-align: center; padding-bottom: 1px; }
+.perf-unit { padding-left: 6px; }
+.perf-spec { text-align: left; }
+
+.ztable { margin: 4px 0 6px; }
+.zhead { display: flex; align-items: flex-end; gap: 0; margin-bottom: 3px; }
+.zhead .zlead { min-width: 150px; }
+.zhead > span:not(.zlead):not(.zspec):not(.zovh) { flex: 1; text-align: center; }
+.zhead .zspec { min-width: 110px; }
+.zhead .zovh { width: 58px; text-align: center; }
+
+.zrow { display: flex; align-items: stretch; margin-bottom: -1px; }
+.zrow .zlead { min-width: 150px; display: flex; flex-direction: column; justify-content: center; }
+.zrow .zlead small { display: block; font-size: 8.6pt; }
+.zrow.tnu .zlead { text-align: left; }
+.cbox {
+  flex: 1; border: 1px solid #000; text-align: center; padding: 5px 2px; margin-left: -1px;
+  display: flex; align-items: center; justify-content: center; min-height: 22px;
+}
+.zrow.tnu .cbox { flex: 1; }
+.zrow .zspec { min-width: 110px; display: flex; align-items: center; padding-left: 10px; border: none; }
+/* overall box fixed width to match header */
+.zrow.tnu .cbox:last-child { max-width: 58px; }
+
+.tnu-note { text-align: center; margin: 12px 0 6px; }
+.cert-foot { margin-top: 6px; text-indent: 24px; }
+
+/* reference page */
+.ref-h { font-weight: 700; text-decoration: underline; font-size: 11.5pt; margin: 16px 0 4px; }
+.ref-u { text-decoration: underline; margin: 8px 0 2px; }
+.cert-page p { margin: 4px 0; text-align: justify; }
+.ref-cap { margin-top: 14px !important; }
+.ref-table { border-collapse: collapse; width: 100%; font-size: 10.5pt; }
+.ref-table th, .ref-table td { border: 1px solid #000; padding: 3px 6px; text-align: center; }
+.ref-table td:first-child { text-align: left; }
+.ref-wells { margin-top: 12px !important; }
+
+.sig-block { margin-top: 40px; text-align: center; width: 320px; margin-left: auto; margin-right: auto; }
+.sig-title { margin-bottom: 26px; }
+.sig-img { max-height: 60px; margin: 0 auto -6px; display: block; }
+.sig-line { height: 40px; }
+.sig-name { border-top: none; }
+.sig-role { }
+
+/* =========================================================================
+   PRINT
+   ========================================================================= */
+@page { size: A4; margin: 0; }
+@media print {
+  .no-print, .topbar, .cert-toolbar { display: none !important; }
+  body { background: #fff; }
+  main { max-width: none; margin: 0; padding: 0; }
+  .cert-viewport { gap: 0; }
+  .cert-doc { gap: 0; }
+  .cert-page { box-shadow: none; margin: 0; width: 210mm; min-height: 297mm; page-break-after: always; }
+  .cert-page:last-child { page-break-after: auto; }
+}
