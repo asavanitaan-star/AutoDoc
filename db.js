@@ -69,6 +69,12 @@ const DEFAULT_SETTINGS = {
     padding: 4,
     suffixYear: true         // append "/<year>"
   },
+  // Self-service registration: gated by an invite code so a random visitor
+  // on the internet can't create an account just by finding the URL.
+  registration: {
+    enabled: true,
+    code: ''                 // set on first server start, editable in Settings
+  },
   // Table 1.1 : Dedicated Equipment (Reference page)
   dedicatedEquipment: [
     { type: 'Alpha technic 4690', serial: '601501', calibrated: '13/11/2025', due: '13/11/2026', institute: 'TE', certNo: 'T0981811132025' },
@@ -201,8 +207,13 @@ export function listUsers() {
 
 export function createUser({ username, password, displayName }) {
   username = String(username || '').trim().toLowerCase();
-  if (!username || !password) throw new Error('username and password are required');
-  if (password.length < 6) throw new Error('password must be at least 6 characters');
+  if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
+    throw new Error('username ต้องเป็นตัวอักษร/ตัวเลขภาษาอังกฤษ 3-32 ตัว (a-z, 0-9, . _ -)');
+  }
+  if (!password || password.length < 6) throw new Error('password ต้องมีอย่างน้อย 6 ตัวอักษร');
+  if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) {
+    throw new Error('username นี้ถูกใช้แล้ว');
+  }
   const now = new Date().toISOString();
   const info = db.prepare(
     'INSERT INTO users (username, display_name, password_hash, created_at) VALUES (?, ?, ?, ?)'

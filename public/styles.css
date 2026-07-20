@@ -51,8 +51,12 @@ body {
 .login-card h1 span { color: var(--blue); }
 .login-card p { margin: 0 0 20px; }
 .login-card form { display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.login-card form[hidden] { display: none; }
 .login-card .btn { width: 100%; justify-content: center; margin-top: 4px; }
 .login-error { color: var(--fail); background: #fdecec; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 600; }
+.login-alt { margin: 18px 0 0; font-size: 13px; }
+.login-alt a { color: var(--blue); font-weight: 600; text-decoration: none; }
+.login-alt a:hover { text-decoration: underline; }
 
 main { max-width: 1080px; margin: 0 auto; padding: 22px 18px 60px; }
 

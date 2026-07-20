@@ -9,6 +9,14 @@ import {
   createSession, getSessionUser, destroySession, purgeExpiredSessions
 } from './db.js';
 
+function refreshRegistrationCode() {
+  const s = getSettings();
+  const code = crypto.randomBytes(6).toString('base64url');
+  s.registration = { ...s.registration, code };
+  saveSettings(s);
+  return code;
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,7 +52,7 @@ function clearSessionCookie(res) {
   res.setHeader('Set-Cookie', `${COOKIE_NAME}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`);
 }
 
-// ---- bootstrap: create a default admin account on first run -----------------
+// ---- bootstrap: create a default admin account + invite code on first run ---
 if (countUsers() === 0) {
   const bootstrapPassword = crypto.randomBytes(9).toString('base64url');
   createUser({ username: 'admin', password: bootstrapPassword, displayName: 'Administrator' });
@@ -54,6 +62,13 @@ if (countUsers() === 0) {
   console.log(`   password: ${bootstrapPassword}`);
   console.log(' Log in and add real accounts for each engineer, then you');
   console.log(' can remove or change this admin account from Settings.');
+  console.log('============================================================');
+}
+if (!getSettings().registration?.code) {
+  const code = refreshRegistrationCode();
+  console.log(' Self-registration invite code (share only with your team):');
+  console.log(`   ${code}`);
+  console.log(' Change or disable it any time from Settings → การสมัครสมาชิก.');
   console.log('============================================================');
 }
 purgeExpiredSessions();
@@ -91,6 +106,28 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', (req, res) => {
   if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
   res.json(req.user);
+});
+
+// registration is gated by an invite code (set in Settings) so a random
+// visitor who finds the URL can't create an account on their own.
+app.get('/api/registration-info', (req, res) => {
+  res.json({ enabled: !!getSettings().registration?.enabled });
+});
+
+app.post('/api/register', (req, res) => {
+  const s = getSettings();
+  const reg = s.registration || {};
+  if (!reg.enabled) return res.status(403).json({ error: 'ปิดการสมัครสมาชิกอยู่ในขณะนี้ ติดต่อผู้ดูแลระบบ' });
+  const { username, password, displayName, code } = req.body || {};
+  if (!code || code !== reg.code) return res.status(403).json({ error: 'รหัสเชิญไม่ถูกต้อง' });
+  try {
+    const user = createUser({ username, password, displayName });
+    const token = createSession(user.id);
+    setSessionCookie(res, token);
+    res.status(201).json(user);
+  } catch (e) {
+    res.status(400).json({ error: String(e.message || e) });
+  }
 });
 
 // ---- everything below requires a logged-in session -----------------------------

@@ -385,6 +385,21 @@ async function renderSettings() {
     </div>
 
     <div class="card">
+      <h2>การสมัครสมาชิก (หน้า /register.html)</h2>
+      <p class="muted">คนที่มีรหัสเชิญนี้เท่านั้นจึงจะสมัครบัญชีเองได้ — ส่งรหัสให้เฉพาะทีมของคุณ</p>
+      <div class="fgrid">
+        <label>เปิดให้สมัครสมาชิก
+          <select id="reg_enabled">
+            <option value="true" ${s.registration?.enabled ? 'selected' : ''}>เปิด</option>
+            <option value="false" ${!s.registration?.enabled ? 'selected' : ''}>ปิด</option>
+          </select>
+        </label>
+        <label>รหัสเชิญ<input id="reg_code" value="${esc(s.registration?.code || '')}" /></label>
+      </div>
+      <button class="btn sm ghost" id="reg_regen" type="button" style="margin-top:8px">🔄 สุ่มรหัสใหม่</button>
+    </div>
+
+    <div class="card">
       <h2>เปลี่ยนรหัสผ่านของฉัน</h2>
       <div class="fgrid">
         <label>รหัสผ่านใหม่ (≥ 6 ตัวอักษร)<input id="myNewPassword" type="password" /></label>
@@ -466,6 +481,12 @@ async function renderSettings() {
     } catch (e) { toast(e.message, 'err'); }
   };
 
+  $('#reg_regen').onclick = () => {
+    const bytes = crypto.getRandomValues(new Uint8Array(9));
+    const code = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '').slice(0, 10);
+    $('#reg_code').value = code;
+  };
+
   $('#changeMyPassword').onclick = async () => {
     const password = $('#myNewPassword').value;
     if (!password) return;
@@ -489,6 +510,7 @@ async function renderSettings() {
       },
       dedicatedEquipment: collectEq(),
       wells: $('#s_wells').value.trim(),
+      registration: { enabled: $('#reg_enabled').value === 'true', code: $('#reg_code').value.trim() },
       specs: {
         rampMin: Number($('#sp_rampMin').value), cycleMax: Number($('#sp_cycleMax').value),
         sdMax: Number($('#sp_sdMax').value), heatedCoverTarget: Number($('#sp_hcTarget').value),

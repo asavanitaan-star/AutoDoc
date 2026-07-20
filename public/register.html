@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>สมัครสมาชิก — AutoDoc PCR</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <div class="login-logo" id="loginLogo"></div>
+    <h1>AutoDoc <span>PCR</span></h1>
+    <p class="muted">สมัครบัญชีใหม่สำหรับทีม Service Engineer</p>
+    <form id="registerForm">
+      <label>ชื่อผู้ใช้ (a-z, 0-9, . _ -)<input id="username" autocomplete="username" required /></label>
+      <label>ชื่อที่แสดง<input id="displayName" autocomplete="name" placeholder="เช่น สมชาย ใจดี" /></label>
+      <label>รหัสผ่าน (≥ 6 ตัวอักษร)<input id="password" type="password" autocomplete="new-password" required /></label>
+      <label>รหัสเชิญจากผู้ดูแลระบบ<input id="code" autocomplete="off" required /></label>
+      <div id="registerError" class="login-error" hidden></div>
+      <button class="btn primary" type="submit">สมัครสมาชิก</button>
+    </form>
+    <p class="login-alt"><a href="/login.html">มีบัญชีอยู่แล้ว? เข้าสู่ระบบ</a></p>
+  </div>
+  <script src="logo.js"></script>
+  <script src="register.js"></script>
+</body>
+</html>
