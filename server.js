@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   getSettings, saveSettings, peekNextCertNo,
-  listCertificates, getCertificate, createCertificate, updateCertificate, deleteCertificate,
+  countCertificates, listCertificates, getCertificate, createCertificate, updateCertificate, deleteCertificate,
   countUsers, listUsers, createUser, deleteUser, changePassword, verifyLogin,
   createSession, getSessionUser, destroySession, purgeExpiredSessions
 } from './db.js';
@@ -15,6 +15,36 @@ function refreshRegistrationCode() {
   s.registration = { ...s.registration, code };
   saveSettings(s);
   return code;
+}
+
+// Seeds one clearly-labeled demo certificate on first run so a brand-new
+// install isn't a blank dashboard. Uses fictional data (never real customer
+// info) and a dedicated cert number so it doesn't consume the real GP
+// sequence. Runs exactly once — deleting the sample later does not recreate it.
+function seedSampleCertificateIfNeeded() {
+  const s = getSettings();
+  if (s.sampleCertSeeded) return;
+  createCertificate({
+    certNo: 'SAMPLE-0001',
+    organize: 'ตัวอย่าง (Sample) — บริษัท เอบีซี จำกัด',
+    address: '123 ถนนตัวอย่าง แขวงตัวอย่าง เขตตัวอย่าง กรุงเทพฯ 10000',
+    customerContact: 'K. ตัวอย่าง (081-234-5678)',
+    model: 'Veriti 96 Well',
+    serialNumber: 'SAMPLE-0000000',
+    manufacture: s.manufacture,
+    calibrationDate: new Date().toISOString().slice(0, 10),
+    calibratedBy: s.engineer.name,
+    rampRate: 2.0, avgCycleTime: 65.0, cycleTimeSd: 0.10, heatedCover: 104.5,
+    temp85: [85.05, 84.98, 85.02, 84.95, 85.01, 84.99],
+    temp45: [45.02, 44.98, 45.01, 44.97, 45.03, 44.99],
+    tnu95: [0.15, 0.18, 0.20, 0.22, 0.17, 0.19], tnu95Overall: 0.25,
+    tnu60: [0.10, 0.12, 0.11, 0.14, 0.13, 0.15], tnu60Overall: 0.18,
+  });
+  s.sampleCertSeeded = true;
+  saveSettings(s);
+  console.log(' Seeded a sample certificate (SAMPLE-0001) so the dashboard');
+  console.log(' has an example to look at — delete it any time.');
+  console.log('============================================================');
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -71,6 +101,7 @@ if (!getSettings().registration?.code) {
   console.log(' Change or disable it any time from Settings → การสมัครสมาชิก.');
   console.log('============================================================');
 }
+seedSampleCertificateIfNeeded();
 purgeExpiredSessions();
 
 // ---- auth middleware ----------------------------------------------------------

@@ -75,6 +75,9 @@ const DEFAULT_SETTINGS = {
     enabled: true,
     code: ''                 // set on first server start, editable in Settings
   },
+  // Flips true once a demo certificate has been seeded, so it's only ever
+  // created once — deleting it later does not bring it back.
+  sampleCertSeeded: false,
   // Table 1.1 : Dedicated Equipment (Reference page)
   dedicatedEquipment: [
     { type: 'Alpha technic 4690', serial: '601501', calibrated: '13/11/2025', due: '13/11/2026', institute: 'TE', certNo: 'T0981811132025' },
@@ -129,6 +132,10 @@ export function consumeCertNo() {
 }
 
 // ---- Certificate CRUD -------------------------------------------------------
+
+export function countCertificates() {
+  return db.prepare('SELECT COUNT(*) AS n FROM certificates').get().n;
+}
 
 export function listCertificates() {
   const rows = db.prepare('SELECT id, cert_no, data, created_at, updated_at FROM certificates ORDER BY id DESC').all();
