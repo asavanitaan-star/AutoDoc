@@ -4,6 +4,10 @@
 Applied Biosystems Veriti™ Thermal Cycler จากค่าที่วัดได้ตามฟอร์ม *Planned Maintenance
 Protocol (FM-SP-02-11)* — กรอกฟอร์ม → ระบบเช็ค Pass/Fail อัตโนมัติ → พิมพ์เป็น PDF ได้ทันที
 
+> **สำหรับผู้ใช้งาน (Service Engineer):** อ่าน [USER_GUIDE.md](USER_GUIDE.md) —
+> วิธี login/สมัครสมาชิก, กรอกฟอร์ม, mapping ค่า TNU, พิมพ์ PDF
+> เอกสารนี้ (README) สำหรับผู้ดูแลระบบ/deploy
+
 ## การใช้งาน
 
 ```bash
