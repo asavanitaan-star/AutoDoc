@@ -9,6 +9,7 @@ async function api(url, opts) {
     ...opts,
     body: opts?.body ? JSON.stringify(opts.body) : undefined,
   });
+  if (res.status === 401) { location.href = '/login.html'; throw new Error('Unauthorized'); }
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
   return res.status === 204 ? null : res.json();
 }
@@ -26,13 +27,29 @@ const ZONES = [0, 1, 2, 3, 4, 5];
 const numArr = (prefix) => ZONES.map(i => Number($(`#${prefix}${i}`)?.value || '') || '');
 
 // ---- router -----------------------------------------------------------------
+let ME = null;
+
 window.addEventListener('hashchange', route);
 window.addEventListener('DOMContentLoaded', async () => {
   $('#navBrand').onclick = () => (location.hash = '#/dashboard');
+  ME = await api('/api/me');
+  renderUserChip();
   SETTINGS = await api('/api/settings');
   if (!location.hash) location.hash = '#/dashboard';
   else route();
 });
+
+function renderUserChip() {
+  const nav = $('.topbar nav');
+  const chip = document.createElement('span');
+  chip.className = 'user-chip';
+  chip.innerHTML = `<span class="who">${esc(ME.displayName || ME.username)}</span><button id="logoutBtn" class="btn sm ghost">ออกจากระบบ</button>`;
+  nav.appendChild(chip);
+  $('#logoutBtn').onclick = async () => {
+    await api('/api/logout', { method: 'POST' });
+    location.href = '/login.html';
+  };
+}
 
 function setActiveNav(name) {
   document.querySelectorAll('[data-nav]').forEach(a =>
@@ -356,6 +373,25 @@ async function renderSettings() {
       <label class="col2" style="margin-top:14px;display:block">Wells ที่วัด<textarea id="s_wells" rows="2">${s.wells || ''}</textarea></label>
     </div>
 
+    <div class="card" id="usersCard">
+      <h2>บัญชีผู้ใช้</h2>
+      <table class="grid" id="usersTable"><thead><tr><th>Username</th><th>ชื่อที่แสดง</th><th></th></tr></thead><tbody id="usersBody"></tbody></table>
+      <div class="fgrid" style="margin-top:14px">
+        <label>Username ใหม่<input id="u_username" placeholder="เช่น somchai" /></label>
+        <label>ชื่อที่แสดง<input id="u_displayname" placeholder="เช่น สมชาย ใจดี" /></label>
+        <label>รหัสผ่าน (≥ 6 ตัวอักษร)<input id="u_password" type="password" /></label>
+      </div>
+      <button class="btn sm ghost" id="userAdd" type="button" style="margin-top:8px">+ เพิ่มผู้ใช้</button>
+    </div>
+
+    <div class="card">
+      <h2>เปลี่ยนรหัสผ่านของฉัน</h2>
+      <div class="fgrid">
+        <label>รหัสผ่านใหม่ (≥ 6 ตัวอักษร)<input id="myNewPassword" type="password" /></label>
+      </div>
+      <button class="btn sm ghost" id="changeMyPassword" type="button" style="margin-top:8px">เปลี่ยนรหัสผ่าน</button>
+    </div>
+
     <div class="card">
       <h2>Specification (เกณฑ์ Pass/Fail)</h2>
       <div class="fgrid">
@@ -415,6 +451,31 @@ async function renderSettings() {
     renderSettingsEqBody(cur);
   });
 
+  // users
+  await loadUsers();
+  $('#userAdd').onclick = async () => {
+    const username = $('#u_username').value.trim();
+    const displayName = $('#u_displayname').value.trim();
+    const password = $('#u_password').value;
+    if (!username || !password) { toast('กรอก username และ password', 'err'); return; }
+    try {
+      await api('/api/users', { method: 'POST', body: { username, displayName, password } });
+      $('#u_username').value = ''; $('#u_displayname').value = ''; $('#u_password').value = '';
+      toast('เพิ่มผู้ใช้แล้ว');
+      await loadUsers();
+    } catch (e) { toast(e.message, 'err'); }
+  };
+
+  $('#changeMyPassword').onclick = async () => {
+    const password = $('#myNewPassword').value;
+    if (!password) return;
+    try {
+      await api(`/api/users/${ME.id}/password`, { method: 'PUT', body: { password } });
+      $('#myNewPassword').value = '';
+      toast('เปลี่ยนรหัสผ่านแล้ว');
+    } catch (e) { toast(e.message, 'err'); }
+  };
+
   $('#saveSettings').onclick = async () => {
     const payload = {
       ...s,
@@ -438,6 +499,24 @@ async function renderSettings() {
     SETTINGS = await api('/api/settings', { method: 'PUT', body: payload });
     toast('บันทึกการตั้งค่าแล้ว');
   };
+}
+
+async function loadUsers() {
+  const users = await api('/api/users');
+  $('#usersBody').innerHTML = users.map(u => `
+    <tr>
+      <td>${esc(u.username)}${u.id === ME.id ? ' <small class="muted">(คุณ)</small>' : ''}</td>
+      <td>${esc(u.displayName)}</td>
+      <td>${u.id === ME.id ? '' : `<button class="btn sm danger" data-userdel="${u.id}">ลบ</button>`}</td>
+    </tr>`).join('');
+  $('#usersBody').querySelectorAll('[data-userdel]').forEach(b => b.onclick = async () => {
+    if (!confirm('ลบบัญชีนี้?')) return;
+    try {
+      await api(`/api/users/${b.dataset.userdel}`, { method: 'DELETE' });
+      toast('ลบผู้ใช้แล้ว');
+      await loadUsers();
+    } catch (e) { toast(e.message, 'err'); }
+  });
 }
 
 function renderSettingsEqBody(eq) {

@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(__dirname, 'data');
@@ -23,6 +24,21 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT UNIQUE NOT NULL,
+    display_name  TEXT NOT NULL DEFAULT '',
+    password_hash TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    token      TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
   );
 `);
 
@@ -155,4 +171,92 @@ export function updateCertificate(id, data) {
 
 export function deleteCertificate(id) {
   return db.prepare('DELETE FROM certificates WHERE id = ?').run(id).changes > 0;
+}
+
+// ---- Auth: password hashing --------------------------------------------------
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  const [salt, hash] = String(stored || '').split(':');
+  if (!salt || !hash) return false;
+  const hashBuf = Buffer.from(hash, 'hex');
+  const derived = crypto.scryptSync(password, salt, 64);
+  return hashBuf.length === derived.length && crypto.timingSafeEqual(hashBuf, derived);
+}
+
+// ---- Users --------------------------------------------------------------------
+
+export function countUsers() {
+  return db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
+}
+
+export function listUsers() {
+  return db.prepare('SELECT id, username, display_name AS displayName, created_at AS createdAt FROM users ORDER BY id').all();
+}
+
+export function createUser({ username, password, displayName }) {
+  username = String(username || '').trim().toLowerCase();
+  if (!username || !password) throw new Error('username and password are required');
+  if (password.length < 6) throw new Error('password must be at least 6 characters');
+  const now = new Date().toISOString();
+  const info = db.prepare(
+    'INSERT INTO users (username, display_name, password_hash, created_at) VALUES (?, ?, ?, ?)'
+  ).run(username, displayName || username, hashPassword(password), now);
+  return { id: info.lastInsertRowid, username, displayName: displayName || username, createdAt: now };
+}
+
+export function deleteUser(id) {
+  return db.prepare('DELETE FROM users WHERE id = ?').run(id).changes > 0;
+}
+
+export function changePassword(id, newPassword) {
+  if (!newPassword || newPassword.length < 6) throw new Error('password must be at least 6 characters');
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(newPassword), id);
+}
+
+export function verifyLogin(username, password) {
+  const row = db.prepare('SELECT * FROM users WHERE username = ?').get(String(username || '').trim().toLowerCase());
+  if (!row) return null;
+  if (!verifyPassword(password, row.password_hash)) return null;
+  return { id: row.id, username: row.username, displayName: row.display_name };
+}
+
+// ---- Sessions -------------------------------------------------------------------
+
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+export function createSession(userId) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const now = Date.now();
+  db.prepare('INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)')
+    .run(token, userId, new Date(now).toISOString(), new Date(now + SESSION_TTL_MS).toISOString());
+  return token;
+}
+
+export function getSessionUser(token) {
+  if (!token) return null;
+  const row = db.prepare(`
+    SELECT u.id, u.username, u.display_name AS displayName, s.expires_at AS expiresAt
+    FROM sessions s JOIN users u ON u.id = s.user_id
+    WHERE s.token = ?
+  `).get(token);
+  if (!row) return null;
+  if (new Date(row.expiresAt).getTime() < Date.now()) {
+    db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+    return null;
+  }
+  return { id: row.id, username: row.username, displayName: row.displayName };
+}
+
+export function destroySession(token) {
+  db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+}
+
+export function purgeExpiredSessions() {
+  db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(new Date().toISOString());
 }

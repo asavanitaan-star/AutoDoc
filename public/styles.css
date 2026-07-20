@@ -35,6 +35,24 @@ body {
 }
 .topbar nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
 .topbar nav a.active { background: #fff; color: var(--navy); }
+.user-chip { display: flex; align-items: center; gap: 10px; margin-left: 14px; padding-left: 14px; border-left: 1px solid rgba(255,255,255,.25); }
+.user-chip .who { color: #cdd8ec; font-weight: 600; font-size: 13px; }
+.user-chip .btn.ghost { color: #cdd8ec; border-color: rgba(255,255,255,.3); }
+.user-chip .btn.ghost:hover { color: #fff; border-color: #fff; }
+
+/* ---- login page ---- */
+.login-body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.login-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: var(--shadow); padding: 34px 36px; width: 100%; max-width: 360px; text-align: center;
+}
+.login-logo { margin-bottom: 10px; display: flex; justify-content: center; }
+.login-card h1 { margin: 0 0 4px; font-size: 20px; color: var(--navy); }
+.login-card h1 span { color: var(--blue); }
+.login-card p { margin: 0 0 20px; }
+.login-card form { display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.login-card .btn { width: 100%; justify-content: center; margin-top: 4px; }
+.login-error { color: var(--fail); background: #fdecec; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 600; }
 
 main { max-width: 1080px; margin: 0 auto; padding: 22px 18px 60px; }
 

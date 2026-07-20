@@ -13,6 +13,36 @@ npm start        # เปิดที่ http://localhost:3000
 
 ต้องใช้ **Node.js 22.5 ขึ้นไป** (ใช้ `node:sqlite` ในตัว ไม่ต้องติดตั้ง native module)
 
+## ระบบ Login (สำหรับทีมที่กระจายกันหลายที่)
+
+แอปมีระบบบัญชีผู้ใช้แยกรายคน (username/password) ป้องกันไม่ให้ใครก็เข้าถึงข้อมูล
+ลูกค้าได้จาก URL — จำเป็นเมื่อขึ้นบน VPS ที่เปิดสู่อินเทอร์เน็ต
+
+**รันครั้งแรก** ระบบจะสร้างบัญชี `admin` พร้อมรหัสผ่านสุ่ม แล้วพิมพ์ออกทาง console
+ครั้งเดียว (ดูใน log ของเทอร์มินัล/`pm2 logs`) — เก็บรหัสนี้ไว้เพื่อ login ครั้งแรก
+จากนั้นให้ไปที่ **ตั้งค่า → บัญชีผู้ใช้** เพื่อสร้างบัญชีของวิศวกรแต่ละคน แล้วจะลบ/
+เปลี่ยนรหัสบัญชี admin ทีหลังก็ได้
+
+- ทุกบัญชีที่ login แล้วจะจัดการ certificate และเพิ่ม/ลบผู้ใช้อื่นได้ (โมเดล trust
+  แบบทีมภายใน ไม่มีสิทธิ์ admin/engineer แยกกัน) — เหมาะกับทีมเล็กที่ไว้ใจกัน
+- แต่ละคนเปลี่ยนรหัสผ่านตัวเองได้ที่ตั้งค่า → "เปลี่ยนรหัสผ่านของฉัน"
+- Session อยู่ได้ 30 วันต่อการ login หนึ่งครั้ง (คุกกี้ HttpOnly)
+
+## Deploy ขึ้น VPS
+
+```bash
+git clone https://github.com/asavanitaan-star/AutoDoc.git
+cd AutoDoc
+npm install
+NODE_ENV=production PORT=3000 npm start   # หรือรันผ่าน pm2 ให้ค้างตลอด
+```
+
+- ตั้ง `NODE_ENV=production` เพื่อให้คุกกี้ session ส่งแบบ `Secure` (ต้องมี HTTPS
+  หน้า VPS ผ่าน reverse proxy เช่น Nginx/Caddy — **อย่าเปิดพอร์ตตรงแบบ HTTP ออก
+  อินเทอร์เน็ต** เพราะจะส่งรหัสผ่าน/คุกกี้แบบไม่เข้ารหัส)
+- แนะนำใช้ `pm2 start server.js --name autodoc` เพื่อให้รันค้างและ restart อัตโนมัติ
+- โฟลเดอร์ `data/` คือฐานข้อมูลทั้งหมด (certificate + ผู้ใช้) ควร backup เป็นระยะ
+
 ## Workflow
 
 1. **สร้างใหม่** — กรอกข้อมูลทั่วไป, Performance, Temperature accuracy (85/45 °C),
@@ -51,8 +81,9 @@ server.js            Express API
 db.js                node:sqlite — ฐานข้อมูล + ค่า default + cert-number runner
 data/autodoc.db      ฐานข้อมูล (สร้างอัตโนมัติ)
 public/
-  index.html         หน้าเว็บหลัก
-  app.js             UI: dashboard / form / settings / certificate
+  index.html         หน้าเว็บหลัก (ต้อง login ก่อนถึงจะเข้าได้)
+  login.html/login.js หน้าเข้าสู่ระบบ
+  app.js             UI: dashboard / form / settings (รวมจัดการผู้ใช้) / certificate
   certificate.js     render ใบ Certificate + logic Pass/Fail
   logo.js            โลโก้ GenePlus (SVG)
   styles.css         สไตล์ทั้งแอป + เลย์เอาต์พิมพ์ A4

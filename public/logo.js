@@ -22,14 +22,16 @@ function genePlusLogo(height = 48) {
       : `<circle cx="${cx}" cy="${cy}" r="${r - 1.1}" fill="none" stroke="${navy}" stroke-width="1.6"/>`;
   }));
 
-  // viewBox tuned so the whole lockup scales by height
+  // viewBox tuned so the whole lockup scales by height.
+  // "GenePlus" at font-size 46 measures ~224px wide starting at x=88 (right
+  // edge ~312) — the viewBox must be wider than that or the trailing "s" clips.
   const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80" height="${height}" role="img" aria-label="GenePlus">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 80" height="${height}" role="img" aria-label="GenePlus">
   <g>${dots}</g>
   <text x="88" y="52" font-family="Georgia,'Times New Roman',serif" font-size="46" font-weight="700">
     <tspan fill="${navy}">Gene</tspan><tspan fill="${blue}">Plus</tspan>
   </text>
-  <path d="M92 60 C140 74 220 74 292 46" fill="none" stroke="${blue}" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M92 60 C140 74 225 74 316 46" fill="none" stroke="${blue}" stroke-width="4.5" stroke-linecap="round"/>
 </svg>`;
   return svg.trim();
 }
