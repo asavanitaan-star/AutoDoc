@@ -37,6 +37,7 @@ body {
 .topbar nav a.active { background: #fff; color: var(--navy); }
 .user-chip { display: flex; align-items: center; gap: 10px; margin-left: 14px; padding-left: 14px; border-left: 1px solid rgba(255,255,255,.25); }
 .user-chip .who { color: #cdd8ec; font-weight: 600; font-size: 13px; }
+.user-chip .role-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--navy); background: #cdd8ec; padding: 2px 6px; border-radius: 4px; }
 .user-chip .btn.ghost { color: #cdd8ec; border-color: rgba(255,255,255,.3); }
 .user-chip .btn.ghost:hover { color: #fff; border-color: #fff; }
 

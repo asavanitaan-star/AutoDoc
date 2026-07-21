@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   getSettings, saveSettings, peekNextCertNo,
   countCertificates, listCertificates, getCertificate, createCertificate, updateCertificate, deleteCertificate,
+  canAccessCertificate,
   countUsers, listUsers, createUser, deleteUser, changePassword, verifyLogin,
   createSession, getSessionUser, destroySession, purgeExpiredSessions
 } from './db.js';
@@ -85,13 +86,14 @@ function clearSessionCookie(res) {
 // ---- bootstrap: create a default admin account + invite code on first run ---
 if (countUsers() === 0) {
   const bootstrapPassword = crypto.randomBytes(9).toString('base64url');
-  createUser({ username: 'admin', password: bootstrapPassword, displayName: 'Administrator' });
+  createUser({ username: 'admin', password: bootstrapPassword, displayName: 'Administrator' }, 'admin');
   console.log('============================================================');
-  console.log(' First run — a default account was created:');
+  console.log(' First run — a default admin account was created:');
   console.log('   username: admin');
   console.log(`   password: ${bootstrapPassword}`);
-  console.log(' Log in and add real accounts for each engineer, then you');
-  console.log(' can remove or change this admin account from Settings.');
+  console.log(' This account can see every certificate and manage Settings.');
+  console.log(' Accounts added afterwards (via Settings or self-registration)');
+  console.log(' are regular users who only see certificates they created.');
   console.log('============================================================');
 }
 if (!getSettings().registration?.code) {
@@ -115,6 +117,14 @@ app.use(attachUser);
 
 function requireAuth(req, res, next) {
   if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+  next();
+}
+
+// company info, cert numbering, spec limits, the reference-equipment table,
+// and account management are admin-only; regular users only get their own
+// certificates and can change their own password.
+function requireAdmin(req, res, next) {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (admin) เท่านั้น' });
   next();
 }
 
@@ -164,18 +174,20 @@ app.post('/api/register', (req, res) => {
 // ---- everything below requires a logged-in session -----------------------------
 app.use('/api', requireAuth);
 
-// ---- Users (any authenticated engineer can manage the shared account list) ----
-app.get('/api/users', (req, res) => res.json(listUsers()));
+// ---- Users (admin manages the account list; everyone can change their own password) ----
+app.get('/api/users', requireAdmin, (req, res) => res.json(listUsers()));
 
-app.post('/api/users', (req, res) => {
+app.post('/api/users', requireAdmin, (req, res) => {
   try {
+    // role is always 'user' here — createUser() only grants 'admin' when
+    // called from the server's own first-run bootstrap, never from a request body
     res.status(201).json(createUser(req.body || {}));
   } catch (e) {
     res.status(400).json({ error: String(e.message || e) });
   }
 });
 
-app.delete('/api/users/:id', (req, res) => {
+app.delete('/api/users/:id', requireAdmin, (req, res) => {
   const id = Number(req.params.id);
   if (id === req.user.id) return res.status(400).json({ error: 'ลบบัญชีตัวเองไม่ได้' });
   if (listUsers().length <= 1) return res.status(400).json({ error: 'ต้องมีอย่างน้อย 1 บัญชี' });
@@ -196,36 +208,48 @@ app.put('/api/users/:id/password', (req, res) => {
 });
 
 // ---- Settings ---------------------------------------------------------------
-app.get('/api/settings', (req, res) => res.json(getSettings()));
-app.put('/api/settings', (req, res) => res.json(saveSettings(req.body)));
+// company/spec/etc. are still readable by everyone (the cert form and printed
+// certificate need them) but the registration invite code is admin-only info
+app.get('/api/settings', (req, res) => {
+  const s = getSettings();
+  if (req.user.role !== 'admin') {
+    const { registration, ...rest } = s;
+    return res.json(rest);
+  }
+  res.json(s);
+});
+app.put('/api/settings', requireAdmin, (req, res) => res.json(saveSettings(req.body)));
 app.get('/api/next-cert-no', (req, res) => res.json({ certNo: peekNextCertNo() }));
 
 // ---- Certificates -----------------------------------------------------------
-app.get('/api/certificates', (req, res) => res.json(listCertificates()));
+// admin sees every certificate; a regular user only sees what they created
+app.get('/api/certificates', (req, res) => res.json(listCertificates(req.user)));
 
 app.get('/api/certificates/:id', (req, res) => {
   const c = getCertificate(Number(req.params.id));
-  if (!c) return res.status(404).json({ error: 'Not found' });
+  if (!c || !canAccessCertificate(c, req.user)) return res.status(404).json({ error: 'Not found' });
   res.json(c);
 });
 
 app.post('/api/certificates', (req, res) => {
   try {
-    res.status(201).json(createCertificate(req.body));
+    res.status(201).json(createCertificate(req.body, req.user.id));
   } catch (e) {
     res.status(400).json({ error: String(e.message || e) });
   }
 });
 
 app.put('/api/certificates/:id', (req, res) => {
+  const existing = getCertificate(Number(req.params.id));
+  if (!existing || !canAccessCertificate(existing, req.user)) return res.status(404).json({ error: 'Not found' });
   const c = updateCertificate(Number(req.params.id), req.body);
-  if (!c) return res.status(404).json({ error: 'Not found' });
   res.json(c);
 });
 
 app.delete('/api/certificates/:id', (req, res) => {
+  const existing = getCertificate(Number(req.params.id));
+  if (!existing || !canAccessCertificate(existing, req.user)) return res.status(404).json({ error: 'Not found' });
   const ok = deleteCertificate(Number(req.params.id));
-  if (!ok) return res.status(404).json({ error: 'Not found' });
   res.json({ ok: true });
 });
 

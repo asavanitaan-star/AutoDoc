@@ -43,7 +43,8 @@ function renderUserChip() {
   const nav = $('.topbar nav');
   const chip = document.createElement('span');
   chip.className = 'user-chip';
-  chip.innerHTML = `<span class="who">${esc(ME.displayName || ME.username)}</span><button id="logoutBtn" class="btn sm ghost">ออกจากระบบ</button>`;
+  const roleBadge = ME.role === 'admin' ? '<span class="role-badge">admin</span>' : '';
+  chip.innerHTML = `<span class="who">${esc(ME.displayName || ME.username)}</span>${roleBadge}<button id="logoutBtn" class="btn sm ghost">ออกจากระบบ</button>`;
   nav.appendChild(chip);
   $('#logoutBtn').onclick = async () => {
     await api('/api/logout', { method: 'POST' });
@@ -307,7 +308,38 @@ async function renderCert(id) {
 }
 
 // ---- settings ---------------------------------------------------------------
+function changePasswordCardHtml() {
+  return `
+    <div class="card">
+      <h2>เปลี่ยนรหัสผ่านของฉัน</h2>
+      <div class="fgrid">
+        <label>รหัสผ่านใหม่ (≥ 6 ตัวอักษร)<input id="myNewPassword" type="password" /></label>
+      </div>
+      <button class="btn sm ghost" id="changeMyPassword" type="button" style="margin-top:8px">เปลี่ยนรหัสผ่าน</button>
+    </div>`;
+}
+
+function wireChangePasswordCard() {
+  $('#changeMyPassword').onclick = async () => {
+    const password = $('#myNewPassword').value;
+    if (!password) return;
+    try {
+      await api(`/api/users/${ME.id}/password`, { method: 'PUT', body: { password } });
+      $('#myNewPassword').value = '';
+      toast('เปลี่ยนรหัสผ่านแล้ว');
+    } catch (e) { toast(e.message, 'err'); }
+  };
+}
+
 async function renderSettings() {
+  // regular users only manage their own password — everything else
+  // (company info, cert numbering, specs, accounts, invite code) is admin-only
+  if (ME.role !== 'admin') {
+    app.innerHTML = `<div class="page-head"><h1>ตั้งค่า</h1></div>${changePasswordCardHtml()}`;
+    wireChangePasswordCard();
+    return;
+  }
+
   const s = await api('/api/settings');
   const eq = s.dedicatedEquipment || [];
   const eqRows = eq.map((e, i) => `
@@ -399,13 +431,7 @@ async function renderSettings() {
       <button class="btn sm ghost" id="reg_regen" type="button" style="margin-top:8px">🔄 สุ่มรหัสใหม่</button>
     </div>
 
-    <div class="card">
-      <h2>เปลี่ยนรหัสผ่านของฉัน</h2>
-      <div class="fgrid">
-        <label>รหัสผ่านใหม่ (≥ 6 ตัวอักษร)<input id="myNewPassword" type="password" /></label>
-      </div>
-      <button class="btn sm ghost" id="changeMyPassword" type="button" style="margin-top:8px">เปลี่ยนรหัสผ่าน</button>
-    </div>
+    ${changePasswordCardHtml()}
 
     <div class="card">
       <h2>Specification (เกณฑ์ Pass/Fail)</h2>
@@ -487,15 +513,7 @@ async function renderSettings() {
     $('#reg_code').value = code;
   };
 
-  $('#changeMyPassword').onclick = async () => {
-    const password = $('#myNewPassword').value;
-    if (!password) return;
-    try {
-      await api(`/api/users/${ME.id}/password`, { method: 'PUT', body: { password } });
-      $('#myNewPassword').value = '';
-      toast('เปลี่ยนรหัสผ่านแล้ว');
-    } catch (e) { toast(e.message, 'err'); }
-  };
+  wireChangePasswordCard();
 
   $('#saveSettings').onclick = async () => {
     const payload = {

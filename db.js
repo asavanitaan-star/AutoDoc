@@ -31,6 +31,7 @@ db.exec(`
     username      TEXT UNIQUE NOT NULL,
     display_name  TEXT NOT NULL DEFAULT '',
     password_hash TEXT NOT NULL,
+    role          TEXT NOT NULL DEFAULT 'user',
     created_at    TEXT NOT NULL
   );
 
@@ -41,6 +42,18 @@ db.exec(`
     expires_at TEXT NOT NULL
   );
 `);
+
+// migrate databases created before `role` / `created_by` existed
+function ensureColumn(table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some(c => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+}
+ensureColumn('users', 'role', "role TEXT NOT NULL DEFAULT 'user'");
+ensureColumn('certificates', 'created_by', 'created_by INTEGER');
+
+// the 'admin' account is always the full-access admin, even on a database
+// that was created before roles existed
+db.prepare("UPDATE users SET role = 'admin' WHERE username = 'admin' AND role <> 'admin'").run();
 
 // ---- Settings helpers -------------------------------------------------------
 
@@ -137,37 +150,46 @@ export function countCertificates() {
   return db.prepare('SELECT COUNT(*) AS n FROM certificates').get().n;
 }
 
-export function listCertificates() {
-  const rows = db.prepare('SELECT id, cert_no, data, created_at, updated_at FROM certificates ORDER BY id DESC').all();
-  return rows.map(r => {
-    const d = JSON.parse(r.data);
-    return {
-      id: r.id,
-      certNo: r.cert_no,
-      organize: d.organize || '',
-      model: d.model || '',
-      serialNumber: d.serialNumber || '',
-      calibrationDate: d.calibrationDate || '',
-      createdAt: r.created_at,
-      updatedAt: r.updated_at
-    };
-  });
+// admin sees every certificate; everyone else sees only what they created
+export function listCertificates(user) {
+  const rows = db.prepare('SELECT id, cert_no, data, created_at, updated_at, created_by FROM certificates ORDER BY id DESC').all();
+  const isAdmin = user?.role === 'admin';
+  return rows
+    .filter(r => isAdmin || r.created_by === user.id)
+    .map(r => {
+      const d = JSON.parse(r.data);
+      return {
+        id: r.id,
+        certNo: r.cert_no,
+        organize: d.organize || '',
+        model: d.model || '',
+        serialNumber: d.serialNumber || '',
+        calibrationDate: d.calibrationDate || '',
+        createdAt: r.created_at,
+        updatedAt: r.updated_at
+      };
+    });
 }
 
 export function getCertificate(id) {
-  const row = db.prepare('SELECT id, cert_no, data, created_at, updated_at FROM certificates WHERE id = ?').get(id);
+  const row = db.prepare('SELECT id, cert_no, data, created_at, updated_at, created_by FROM certificates WHERE id = ?').get(id);
   if (!row) return null;
-  return { id: row.id, certNo: row.cert_no, createdAt: row.created_at, updatedAt: row.updated_at, ...JSON.parse(row.data) };
+  return { id: row.id, certNo: row.cert_no, createdAt: row.created_at, updatedAt: row.updated_at, createdBy: row.created_by, ...JSON.parse(row.data) };
 }
 
-export function createCertificate(data) {
+// true if `user` (admin, or the certificate's creator) may view/edit/delete it
+export function canAccessCertificate(cert, user) {
+  return user?.role === 'admin' || cert.createdBy === user?.id;
+}
+
+export function createCertificate(data, userId) {
   const now = new Date().toISOString();
   // assign a cert number if the client didn't supply one
   const certNo = (data.certNo && String(data.certNo).trim()) || consumeCertNo();
   const payload = { ...data, certNo };
   const info = db.prepare(
-    'INSERT INTO certificates (cert_no, data, created_at, updated_at) VALUES (?, ?, ?, ?)'
-  ).run(certNo, JSON.stringify(payload), now, now);
+    'INSERT INTO certificates (cert_no, data, created_at, updated_at, created_by) VALUES (?, ?, ?, ?, ?)'
+  ).run(certNo, JSON.stringify(payload), now, now, userId ?? null);
   return getCertificate(info.lastInsertRowid);
 }
 
@@ -209,10 +231,12 @@ export function countUsers() {
 }
 
 export function listUsers() {
-  return db.prepare('SELECT id, username, display_name AS displayName, created_at AS createdAt FROM users ORDER BY id').all();
+  return db.prepare('SELECT id, username, display_name AS displayName, role, created_at AS createdAt FROM users ORDER BY id').all();
 }
 
-export function createUser({ username, password, displayName }) {
+// `role` is never taken from request bodies — only the server's own
+// first-run bootstrap passes 'admin' explicitly. Everyone else is 'user'.
+export function createUser({ username, password, displayName }, role = 'user') {
   username = String(username || '').trim().toLowerCase();
   if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
     throw new Error('username ต้องเป็นตัวอักษร/ตัวเลขภาษาอังกฤษ 3-32 ตัว (a-z, 0-9, . _ -)');
@@ -223,9 +247,9 @@ export function createUser({ username, password, displayName }) {
   }
   const now = new Date().toISOString();
   const info = db.prepare(
-    'INSERT INTO users (username, display_name, password_hash, created_at) VALUES (?, ?, ?, ?)'
-  ).run(username, displayName || username, hashPassword(password), now);
-  return { id: info.lastInsertRowid, username, displayName: displayName || username, createdAt: now };
+    'INSERT INTO users (username, display_name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)'
+  ).run(username, displayName || username, hashPassword(password), role, now);
+  return { id: info.lastInsertRowid, username, displayName: displayName || username, role, createdAt: now };
 }
 
 export function deleteUser(id) {
@@ -241,7 +265,7 @@ export function verifyLogin(username, password) {
   const row = db.prepare('SELECT * FROM users WHERE username = ?').get(String(username || '').trim().toLowerCase());
   if (!row) return null;
   if (!verifyPassword(password, row.password_hash)) return null;
-  return { id: row.id, username: row.username, displayName: row.display_name };
+  return { id: row.id, username: row.username, displayName: row.display_name, role: row.role };
 }
 
 // ---- Sessions -------------------------------------------------------------------
@@ -259,7 +283,7 @@ export function createSession(userId) {
 export function getSessionUser(token) {
   if (!token) return null;
   const row = db.prepare(`
-    SELECT u.id, u.username, u.display_name AS displayName, s.expires_at AS expiresAt
+    SELECT u.id, u.username, u.display_name AS displayName, u.role AS role, s.expires_at AS expiresAt
     FROM sessions s JOIN users u ON u.id = s.user_id
     WHERE s.token = ?
   `).get(token);
@@ -268,7 +292,7 @@ export function getSessionUser(token) {
     db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
     return null;
   }
-  return { id: row.id, username: row.username, displayName: row.displayName };
+  return { id: row.id, username: row.username, displayName: row.displayName, role: row.role };
 }
 
 export function destroySession(token) {
