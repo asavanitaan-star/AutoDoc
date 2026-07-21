@@ -47,6 +47,27 @@ npm run pm2:stop         # หยุดแอป
 > ข้อมูลทั้งหมดเก็บในไฟล์ `data/autodoc.db` ไฟล์เดียวบนเครื่องนั้น ไม่ว่าจะรันด้วยวิธี
 > ไหนควร backup ไฟล์นี้เป็นระยะ
 
+## เข้าถึงจากนอก LAN + เข้ารหัสทราฟฟิกด้วย Tailscale (แนะนำ)
+
+ถ้ารันแอปบนเครื่อง/VM ในออฟฟิศ (เช่น VMware Ubuntu) ปกติทีมงานต้องอยู่ Wi-Fi
+เดียวกันถึงจะเข้าได้ และทราฟฟิกยังเป็น HTTP ธรรมดา (รหัสผ่าน/คุกกี้วิ่งแบบไม่เข้ารหัส
+ในเครือข่าย) — [Tailscale](https://tailscale.com) แก้ทั้งสองปัญหานี้โดยไม่ต้องตั้ง
+Nginx/certbot เอง และวิศวกรที่ออกไปหน้างานลูกค้าก็เข้าแอปได้เหมือนอยู่ในออฟฟิศ
+
+**บนเครื่อง/VM ที่รันแอป:**
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up                          # login ครั้งแรก (ผูกกับ Google/GitHub/Microsoft ก็ได้)
+sudo tailscale serve https / http://localhost:3000   # เปิด HTTPS จริงให้อัตโนมัติ
+```
+`tailscale serve` จะออก URL รูปแบบ `https://<ชื่อเครื่อง>.<tailnet>.ts.net` ที่มี
+certificate ใช้งานได้จริง ไม่ต้องตั้ง reverse proxy เอง
+
+**บนเครื่องของทีมงานแต่ละคน** ติดตั้งแอป Tailscale (Windows/Mac/Linux/iOS/Android)
+แล้ว login ด้วย tailnet เดียวกัน จากนั้นเข้า URL ข้างต้นได้จากทุกที่ที่มีอินเทอร์เน็ต
+
+> แผนฟรีของ Tailscale รองรับ ~3 users / 100 devices ต่อ tailnet — พอสำหรับทีมขนาดเล็ก
+
 ## ระบบ Login (สำหรับทีมที่กระจายกันหลายที่)
 
 แอปมีระบบบัญชีผู้ใช้แยกรายคน (username/password) ป้องกันไม่ให้ใครก็เข้าถึงข้อมูล
@@ -84,7 +105,9 @@ NODE_ENV=production PORT=3000 npm start   # หรือรันผ่าน pm
 
 - ตั้ง `NODE_ENV=production` เพื่อให้คุกกี้ session ส่งแบบ `Secure` (ต้องมี HTTPS
   หน้า VPS ผ่าน reverse proxy เช่น Nginx/Caddy — **อย่าเปิดพอร์ตตรงแบบ HTTP ออก
-  อินเทอร์เน็ต** เพราะจะส่งรหัสผ่าน/คุกกี้แบบไม่เข้ารหัส)
+  อินเทอร์เน็ต** เพราะจะส่งรหัสผ่าน/คุกกี้แบบไม่เข้ารหัส) หรือใช้
+  [Tailscale](#เข้าถึงจากนอก-lan--เข้ารหัสทราฟฟิกด้วย-tailscale-แนะนำ) แทนก็ได้ —
+  `tailscale serve` ออก HTTPS ให้เลยโดยไม่ต้องตั้ง reverse proxy เอง
 - แนะนำรันด้วย pm2 แทน `npm start` เพื่อให้ค้างและ restart อัตโนมัติ (ดูหัวข้อ
   [รันแบบถาวรด้วย pm2](#รันแบบถาวรด้วย-pm2-สำหรับให้ทั้งทีมใช้งานร่วมกัน) ด้านบน) —
   ไฟล์ `ecosystem.config.cjs` ตั้ง `NODE_ENV=production` ให้อยู่แล้ว
